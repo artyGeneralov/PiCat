@@ -221,9 +221,16 @@ void parseSOS(std::ifstream& inFile, Header* const header) {
 	header->successiveApproximationHigh = successiveApprox >> 4;
 	header->successiveApproximationLow = successiveApprox & 0x0F;
 
+	if (header->frameType == baseline) {
+		header->startOfSelection = 0;
+		header->endOfSelection = 63;
+		header->successiveApproximationHigh = 0;
+		header->successiveApproximationLow = 0;
+	}
+
 	if (header->startOfSelection != 0 || header->endOfSelection != 63 || successiveApprox != 0) {
-		std::cout << "Error: Spectral selection, start: " << header->startOfSelection << ", end: " << header->endOfSelection << 
-			", or successive approximation: " << successiveApprox << " are of illegal values\n";
+		std::cout << "Error: Spectral selection, start: " << (uint)header->startOfSelection << ", end: " << (uint)header->endOfSelection <<
+			", or successive approximation: " << (uint)successiveApprox << " are of illegal values\n";
 		header->isValid = false;
 		return;
 	}
@@ -256,7 +263,6 @@ Header* parseJPEG(const std::string& filename) {
 	}
 	last = inFile.get();
 	current = inFile.get();
-	int count = 0; // delete
 	while (header->isValid) {
 		if (!inFile) {
 			std::cout << "Error: Invalid end of file\n";
@@ -286,18 +292,86 @@ Header* parseJPEG(const std::string& filename) {
 		}
 		else if (current == DHT) { // Define Huffman Table
 			parseHT(inFile, header);
-			count++; //delete
-			if (count > 3) break; //delete
 		}
 		else if (current == SOF0) { // Start of Frame0
 			header->frameType = SOF0;
 			parseSOF(inFile, header);
 		}
+		else if (current == COM) { // Comment
+			parseCOM(inFile, header);
+		}
+		else if ((current >= JPG0 && current <= JPG13) || current == DNL || current == DHP || current == EXP) { // Ignore unused markers
+			parseCOM(inFile, header);
+		}
+		else if (current == 0xFF) { // Allows any number of consecutive 0xFF bytes
+			current = inFile.get();
+			continue;
+		}
+		else if (current == EOI) {
+			std::cout << "Error: EOI Marker before SOS is not allowed\n";
+			header->isValid = false;
+			return header;
+		}
+		else if (current == SOI) {
+			std::cout << "Error: Embedded JPEGs unsupported\n";
+			header->isValid = false;
+			return header;
+		}
+		else if (current == DAC) {
+			std::cout << "Error: Arithmetic Coding mode unsupported\n";
+			header->isValid = false;
+			return header;
+		}
+		else if (current > SOF0 && current <= SOF15) {
+			std::cout << "Error: SOF1-15 unsupported, received: " << std::hex << (uint)current << std::dec << "\n";
+			header->isValid = false;
+			return header;
+		}
+		else if (current >= RST0 && current <= RST7) {
+			std::cout << "Error: RST Marker before SOS is not allowed\n";
+			header->isValid = false;
+			return header;
+		}
+		else{
+			std::cout << "Error: unknown marker: " << std::hex << (uint)current << std::dec << "\n";
+			header->isValid = false;
+			return header;
+		}
 		last = inFile.get();
 		current = inFile.get();
 	}
-	if(header->isValid)
-		std::cout << "File read correctly\n";
+	if (header->isValid) {
+		current = inFile.get();
+		while (true) {
+			if (!inFile) {
+				std::cout << "Error: Bit-Stream prematurely ended\n";
+				header->isValid = false;
+				return header;
+			}
+
+			last = current;
+			current = inFile.get();
+			if (last == 0xFF) {
+				if (current == EOI) {
+					break;
+				}
+				else if (current == 0x00) { // overwrite 0x00 with the next byte
+					header->huffmanData.push_back(last);
+					current = inFile.get();
+				}
+				else if (current >= RST0 && current <= RST7) { // overwrite 
+					current = inFile.get();
+				}
+				else if (current == 0xFF) {
+					// Do nothing
+				}
+			}
+			else
+			{
+				header->huffmanData.push_back(last);
+			}
+		}
+	}
 	return header;
 }
 
@@ -307,9 +381,9 @@ void printHeader(const Header* const header) {
 	for (uint i = 0; i < 4; ++i) {
 		if (header->quantizationTables[i].set) {
 			std::cout << "Table ID: " << i << "\n";
-			std::cout << "Table Data:\n";
+			std::cout << "\tTable Data:";
 			for (uint k = 0; k < 64; ++k) {
-				if (k % 8 == 0) std::cout << "\n";
+				if (k % 8 == 0) std::cout << "\n\t\t";
 				uint val = header->quantizationTables[i].table[k];
 				if(val < 10)
 					std::cout << val << "   ";
@@ -325,44 +399,60 @@ void printHeader(const Header* const header) {
 	std::cout << "Frametype: 0x" << std::hex << (uint)header->frameType << std::dec << "\n";
 	std::cout << "Height: " << header->height << "\n";
 	std::cout << "Width: " << header->width << "\n\n";
-	std::cout << "Color Components:\n\n";
+	std::cout << "Color Components:\n";
 	for (int i = 0; i < header->numComponents; ++i) {
-		std::cout << "Component ID: " << (uint)header->colorComponents[i].componentID << "\n";
-		std::cout << "Horizontal Sampling Factor: " << (uint)header->colorComponents[i].horizontalSamplingFactor << "\n";
-		std::cout << "Vertical Sampling Factor: " << (uint)header->colorComponents[i].verticalSamplingFactor << "\n";
-		std::cout << "Quantization Table ID: " << (uint)header->colorComponents[i].quantizationTableID << "\n\n";
+		std::cout << "\tComponent ID: " << (uint)header->colorComponents[i].componentID << "\n";
+		std::cout << "\t\tHorizontal Sampling Factor: " << (uint)header->colorComponents[i].horizontalSamplingFactor << "\n";
+		std::cout << "\t\tVertical Sampling Factor: " << (uint)header->colorComponents[i].verticalSamplingFactor << "\n";
+		std::cout << "\t\tQuantization Table ID: " << (uint)header->colorComponents[i].quantizationTableID << "\n\n";
 	}
 	std::cout << "***DHT***\n";
 	std::cout << "DC Tables:\n";
 	for (uint i = 0; i < 4; ++i) {
 		if (header->huffmanDCTables[i].set) {
-			std::cout << "Table ID: " << i << "\n";
-			std::cout << "Symbols:\n";
+			std::cout << "\tTable ID: " << i << "\n";
+			std::cout << "\t\tSymbols:\n";
 			for (uint j = 0; j < 16; ++j) {
-				std::cout << (j + 1) << ": ";
+				std::cout <<"\t\t" << (j + 1) << ": ";
 				for (uint k = header->huffmanDCTables[i].offsets[j]; k < header->huffmanDCTables[i].offsets[j + 1]; ++k) {
 					std::cout << std::hex << (uint)header->huffmanDCTables[i].symbols[k] << std::dec << " ";
 				}
 				std::cout << "\n";
 			}
+			std::cout << "\n";
 		}
 	}
 	std::cout << "\nAC Tables:\n";
 	for (uint i = 0; i < 4; ++i) {
 		if (header->huffmanACTables[i].set) {
-			std::cout << "Table ID: " << i << "\n";
-			std::cout << "Symbols:\n";
+			std::cout << "\tTable ID: " << i << "\n";
+			std::cout << "\t\tSymbols:\n";
 			for (uint j = 0; j < 16; ++j) {
-				std::cout << (j + 1) << ": ";
+				std::cout <<"\t\t" << (j + 1) << ": ";
 				for (uint k = header->huffmanACTables[i].offsets[j]; k < header->huffmanACTables[i].offsets[j + 1]; ++k) {
 					std::cout << std::hex << (uint)header->huffmanACTables[i].symbols[k] << std::dec << " ";
 				}
 				std::cout << "\n";
 			}
+			std::cout << "\n";
 		}
 	}
 	std::cout << "\n***DRI***\n";
 	std::cout << "Restart Interval: " << (uint)header->restartInterval << "\n\n";
+	std::cout << "\n***SOS***\n";
+	std::cout << "Components:\n";
+	for (uint i = 0; i < header->numComponents; ++i) {
+		std::cout << "\tComponent ID: " << (uint)header->colorComponents[i].componentID << "\n";
+		std::cout << "\tHuffman DC Table ID: " << (uint)header->colorComponents[i].huffmanDCTableID << "\n";
+		std::cout << "\tHuffman AC Table ID: " << (uint)header->colorComponents[i].huffmanACTableID << "\n\n";
+	}
+	std::cout << "Spectral selection:\n";
+	std::cout << "\tStart of Selection: " << (uint)header->startOfSelection << "\n";
+	std::cout << "\tEnd of Selection: " << (uint)header->endOfSelection << "\n";
+	std::cout << "Successive Approximation:\n";
+	std::cout << "\tHigh: " << (uint)header->successiveApproximationHigh << "\n";
+	std::cout << "\tLow: " << (uint)header->successiveApproximationLow << "\n";
+	std::cout << "\tLength of Huffman Data: " << (uint)header->huffmanData.size() << "\n";
 }
 
 int main(int argc, char** argv) {

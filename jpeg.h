@@ -85,6 +85,9 @@ const byte JPG13 = 0xFD;
 
 const byte COM = 0xFE;
 
+
+const byte baseline = 0xC0;
+
 struct HuffmanTable {
     byte offsets[17] = { 0 };
     byte symbols[162] = { 0 };
