@@ -1,6 +1,7 @@
 #ifndef JPEG_H
 #define JPEG_H
 
+#include <vector>
 
 typedef unsigned char byte;
 typedef unsigned int uint;
@@ -96,6 +97,9 @@ struct ColorComponent {
     byte horizontalSamplingFactor = 1;
     byte verticalSamplingFactor = 1;
     byte quantizationTableID = 0;
+    byte huffmanDCTableID = 0;
+    byte huffmanACTableID = 0;
+
     bool used = false;
 };
 
@@ -113,9 +117,16 @@ struct Header {
     uint width = 0;
     byte numComponents = 0;
 
+    byte startOfSelection = 0;
+    byte endOfSelection = 63;
+    byte successiveApproximationHigh = 0;
+    byte successiveApproximationLow = 0;
+
     ColorComponent colorComponents[3];
 
     uint restartInterval = 0;
+
+    std::vector<byte> huffmanData;
 
     bool zeroBased = false;
 	bool isValid = true;

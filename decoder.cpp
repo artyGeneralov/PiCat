@@ -37,7 +37,15 @@ void parseQT(std::ifstream& inFile, Header* const header) {
 void parseAPPN(std::ifstream& inFile, Header* const header) {
 	std::cout << "Parsing APPN Marker\n";
 	uint length = (inFile.get() << 8) | inFile.get();
-	for (int i = 0; i < length - 2; ++i) {
+	for (uint i = 0; i < length - 2; ++i) {
+		inFile.get();
+	}
+}
+
+void parseCOM(std::ifstream& inFile, Header* const header) {
+	std::cout << "Parsing COM Marker\n";
+	uint length = (inFile.get() << 8) | inFile.get();
+	for (uint i = 0; i < length - 2; ++i) {
 		inFile.get();
 	}
 }
@@ -166,6 +174,67 @@ void parseHT(std::ifstream& inFile, Header* const header) {
 	}
 }
 
+void parseSOS(std::ifstream& inFile, Header* const header) {
+	std::cout << "Parsing SOS Marker\n";
+	if (header->numComponents == 0) {
+		std::cout << "Error: SOS Marker can't appear before SOF Marker\n";
+		header->isValid = false;
+		return;
+	}
+	uint length = (inFile.get() << 8) | inFile.get();
+	for (uint i = 0; i < header->numComponents; ++i) {
+		header->colorComponents[i].used = false;
+	}
+	byte numOfComponents = inFile.get();
+	for (uint i = 0; i < numOfComponents; ++i) {
+		byte componentID = inFile.get();
+		if (header->zeroBased) {
+			componentID += 1;
+		}
+		if (componentID > header->numComponents) {
+			std::cout << "Error: Invalid color component ID " << (uint) componentID << "\n";
+			header->isValid = false;
+			return;
+		}
+		ColorComponent* colorComponent = &header->colorComponents[componentID - 1];
+		if (colorComponent->used) {
+			std::cout << "Error: Dupelicate color component ID " << (uint) componentID << " not allowed\n";
+			header->isValid = false;
+			return;
+		}
+		colorComponent->used = true;
+		byte huffmanTableIDs = inFile.get();
+		colorComponent->huffmanDCTableID = huffmanTableIDs >> 4;
+		colorComponent->huffmanACTableID = huffmanTableIDs & 0x0F;
+		if (colorComponent->huffmanACTableID > 3 || colorComponent->huffmanDCTableID > 3) {
+			std::cout << "Error: Component cannot refer to a huffman table of ID greater then 3\n";
+			header->isValid = false;
+			return;
+		}
+	}
+
+	// Spectral selection and successive approximation bytes:
+	// in baseline: start = 0, end = 63, succcessiveApprox = 00 (0 for high and low byte)
+	header->startOfSelection = inFile.get();
+	header->endOfSelection = inFile.get();
+	byte successiveApprox = inFile.get();
+	header->successiveApproximationHigh = successiveApprox >> 4;
+	header->successiveApproximationLow = successiveApprox & 0x0F;
+
+	if (header->startOfSelection != 0 || header->endOfSelection != 63 || successiveApprox != 0) {
+		std::cout << "Error: Spectral selection, start: " << header->startOfSelection << ", end: " << header->endOfSelection << 
+			", or successive approximation: " << successiveApprox << " are of illegal values\n";
+		header->isValid = false;
+		return;
+	}
+
+	if (length - 6 - (numOfComponents * 2) != 0) {
+		std::cout << "Error: Invalid Length of SOS non-stream segment\n";
+		header->isValid = false;
+		return;
+	}
+}
+
 Header* parseJPEG(const std::string& filename) {
 	std::ifstream inFile = std::ifstream(filename, std::ios::in | std::ios::binary);
 	if (!inFile.is_open()) {
@@ -210,6 +279,10 @@ Header* parseJPEG(const std::string& filename) {
 		}
 		else if (current == DRI){ // Define Restart Interval
 			parseRI(inFile, header);
+		}
+		else if (current == SOS) { // Start of Scan
+			parseSOS(inFile, header);
+			break;
 		}
 		else if (current == DHT) { // Define Huffman Table
 			parseHT(inFile, header);
