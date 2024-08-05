@@ -2,7 +2,6 @@
 #include <iostream>
 #include <fstream>
 
-
 void parseQT(std::ifstream& inFile, Header* const header) {
 	std::cout << "Parsing DQT Marker\n";
 	int length = (inFile.get() << 8) | inFile.get();
@@ -17,22 +16,19 @@ void parseQT(std::ifstream& inFile, Header* const header) {
 			return;
 		}
 		header->quantizationTables[tableID].set = true;
-		if (tableInfo >> 4 != 0) // 16-bit quantization table
-		{
+		if (tableInfo >> 4 != 0) { // 16-bit quantization table
 			for (uint i = 0; i < 64; ++i) {
 				header->quantizationTables[tableID].table[zigZagMap[i]] = (inFile.get() << 8) | inFile.get();
 			}
 			length -= 128;
 		}
-		else // 8-bit quantization table
-		{
+		else { // 8-bit quantization table
 			for (uint i = 0; i < 64; ++i) {
 				header->quantizationTables[tableID].table[zigZagMap[i]] = inFile.get();
 			}
 			length -= 64;
 		}
 	}
-
 	if (length != 0) {
 		std::cout << "Error: DQT Marker invalid size\n";
 	}
@@ -54,13 +50,11 @@ void parseSOF(std::ifstream& inFile, Header* const header) {
 		return;
 	}
 	uint length = (inFile.get() << 8) | inFile.get();
-
 	byte precision = inFile.get();
 	if (precision != 8) {
 		std::cout << "Error: Invalid precision. Must be 8, received " << (uint)precision << "\n";
 		header->isValid = false;
 		return;
-	
 	}
 
 	header->height = (inFile.get() << 8) | inFile.get();
@@ -92,7 +86,6 @@ void parseSOF(std::ifstream& inFile, Header* const header) {
 			header->isValid = false;
 			return;
 		}
-
 		if (componentID == 0 || componentID > 3) {
 			std::cout << "Error: Invalid Component IDs\n";
 			header->isValid = false;
@@ -140,18 +133,15 @@ void parseHT(std::ifstream& inFile, Header* const header) {
 	std::cout << "Parsing DHT Marker\n";
 	int length = (inFile.get() << 8) | inFile.get();
 	length -= 2;
-
 	while (length > 0) {
 		byte tableInfo = inFile.get();
 		byte tableID = tableInfo & 0x0F;
 		bool ACTable = tableInfo >> 4;
-
 		if (tableID > 3) {
 			std::cout << "Error: Invalid Huffman Table ID\n";
 			header->isValid = false;
 			return;
 		}
-
 		HuffmanTable* hTable = ACTable ? &header->huffmanACTables[tableID] : &header->huffmanDCTables[tableID];
 		hTable->set = true;
 		hTable->offsets[0] = 0;
@@ -165,7 +155,6 @@ void parseHT(std::ifstream& inFile, Header* const header) {
 			header->isValid = false;
 			return;
 		}
-
 		for (uint i = 0; i < allSymbols; ++i) {
 			hTable->symbols[i] = inFile.get();
 		}
@@ -189,7 +178,6 @@ Header* parseJPEG(const std::string& filename) {
 		inFile.close();
 		return nullptr;
 	}
-
 	byte last = inFile.get();
 	byte current = inFile.get();
 	if (last != 0xFF || current != SOI) {
@@ -213,7 +201,6 @@ Header* parseJPEG(const std::string& filename) {
 			inFile.close();
 			return header;
 		}
-
 		if (current >= APP0 && current <= APP15) { // APPN Discarding
 			parseAPPN(inFile, header);
 		}
@@ -232,15 +219,10 @@ Header* parseJPEG(const std::string& filename) {
 		else if (current == SOF0) { // Start of Frame0
 			header->frameType = SOF0;
 			parseSOF(inFile, header);
-			
 		}
 		last = inFile.get();
 		current = inFile.get();
-
 	}
-
-
-
 	if(header->isValid)
 		std::cout << "File read correctly\n";
 	return header;
@@ -262,12 +244,10 @@ void printHeader(const Header* const header) {
 					std::cout << val << "  ";
 				else
 					std::cout << val << " ";
-
 			}
 			std::cout << "\n\n";
 		}
 	}
-
 	std::cout << "****SOF****\n";
 	std::cout << "Frametype: 0x" << std::hex << (uint)header->frameType << std::dec << "\n";
 	std::cout << "Height: " << header->height << "\n";
