@@ -1,6 +1,8 @@
 #include "jpeg.h"
 #include <iostream>
 #include <fstream>
+#include "errorHandler.h"
+
 
 void parseQT(std::ifstream& inFile, Header* const header) {
 	std::cout << "Parsing DQT Marker\n";
@@ -11,8 +13,7 @@ void parseQT(std::ifstream& inFile, Header* const header) {
 		length -= 1;
 		byte tableID = tableInfo & 0x0F;
 		if (tableID > 3) {
-			std::cout << "Error: Invalid Quatization Table ID " << (uint)tableID << "\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Invalid Quatization Table ID " + std::to_string((uint)tableID) + "\n", header->isValid);
 			return;
 		}
 		header->quantizationTables[tableID].set = true;
@@ -30,7 +31,7 @@ void parseQT(std::ifstream& inFile, Header* const header) {
 		}
 	}
 	if (length != 0) {
-		std::cout << "Error: DQT Marker invalid size\n";
+		ErrorHandler::logJPEGError("Error: DQT Marker invalid size\n", header->isValid);
 	}
 }
 
@@ -53,30 +54,25 @@ void parseCOM(std::ifstream& inFile, Header* const header) {
 void parseSOF(std::ifstream& inFile, Header* const header) {
 	std::cout << "Parsing SOF Marker\n";
 	if (header->numComponents != 0) {
-		std::cout << "Error: Duplicate SOF Markers\n";
-		header->isValid = false;
+		ErrorHandler::logJPEGError("Error: Duplicate SOF Markers\n", header->isValid);
 		return;
 	}
 	uint length = (inFile.get() << 8) | inFile.get();
 	byte precision = inFile.get();
 	if (precision != 8) {
-		std::cout << "Error: Invalid precision. Must be 8, received " << (uint)precision << "\n";
-		header->isValid = false;
+		ErrorHandler::logJPEGError("Error: Invalid precision. Must be 8, received " + std::to_string((uint)precision) + "\n", header->isValid);
 		return;
 	}
 
 	header->height = (inFile.get() << 8) | inFile.get();
 	header->width = (inFile.get() << 8) | inFile.get();
-	if (header->height == 0 || header->width == 0)
-	{
-		std::cout << "Error: Invalid dimensions\n";
-		header->isValid = false;
+	if (header->height == 0 || header->width == 0){
+		ErrorHandler::logJPEGError("Error: Invalid dimensions\n", header->isValid);
 		return;
 	}
 	header->numComponents = inFile.get();
 	if (header->numComponents != 3 && header->numComponents != 1) {
-		std::cout << "Error: Invalid number of components";
-		header->isValid = false;
+		ErrorHandler::logJPEGError("Error: Invalid number of components", header->isValid);
 		return;
 	}
 	for (uint i = 0; i < header->numComponents; ++i) {
@@ -90,19 +86,16 @@ void parseSOF(std::ifstream& inFile, Header* const header) {
 			componentID += 1;
 		}
 		if (componentID == 4 || componentID == 5) {
-			std::cout << "Error: YIQ Color mode not supported\n"; // TODO: Support YIQ Color mode
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: YIQ Color mode not supported\n", header->isValid); // TODO: Support YIQ Color mode
 			return;
 		}
 		if (componentID == 0 || componentID > 3) {
-			std::cout << "Error: Invalid Component IDs\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Invalid Component IDs\n", header->isValid);
 			return;
 		}
 		ColorComponent* component = &header->colorComponents[componentID - 1];
 		if (component->used) {
-			std::cout << "Error: Duplicate component definition for component: " << (uint)componentID << "\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Duplicate component definition for component: " + std::to_string((uint)componentID) + "\n", header->isValid);
 			return;
 		}
 		component->used = true;
@@ -117,14 +110,12 @@ void parseSOF(std::ifstream& inFile, Header* const header) {
 		//}
 		component->quantizationTableID = inFile.get();
 		if (component->quantizationTableID > 3) {
-			std::cout << "Error: Component " << (uint)componentID << " is referencing an invalid QT ID: " << (uint)component->quantizationTableID << "\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Component " + std::to_string((uint)componentID) + " is referencing an invalid QT ID: " + std::to_string((uint)component->quantizationTableID) + "\n", header->isValid);
 			return;
 		}
 	}
 	if (length - 8 - (3 * header->numComponents) != 0) {
-		std::cout << "Error: SOF Length Invalid";
-		header->isValid = false;
+		ErrorHandler::logJPEGError("Error: SOF Length Invalid\n", header->isValid);
 	}
 }
 
@@ -132,7 +123,7 @@ void parseRI(std::ifstream& inFile, Header* const header) {
 	std::cout << "Parsing DRI Marker\n";
 	uint length = (inFile.get() << 8) | inFile.get();
 	if (length != 4) {
-		std::cout << "Error: Invalid DRI Length\n";
+		ErrorHandler::logJPEGError("Error: Invalid DRI Length\n", header->isValid);
 	}
 	header->restartInterval = (inFile.get() << 8) | inFile.get();
 }
@@ -146,8 +137,7 @@ void parseHT(std::ifstream& inFile, Header* const header) {
 		byte tableID = tableInfo & 0x0F;
 		bool ACTable = tableInfo >> 4;
 		if (tableID > 3) {
-			std::cout << "Error: Invalid Huffman Table ID\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Invalid Huffman Table ID\n", header->isValid);
 			return;
 		}
 		HuffmanTable* hTable = ACTable ? &header->huffmanACTables[tableID] : &header->huffmanDCTables[tableID];
@@ -159,8 +149,7 @@ void parseHT(std::ifstream& inFile, Header* const header) {
 			hTable->offsets[i] = allSymbols;
 		}
 		if (allSymbols > 162) {
-			std::cout << "Error: Too many symbols in Huffman Table\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Too many symbols in Huffman Table\n", header->isValid);
 			return;
 		}
 		for (uint i = 0; i < allSymbols; ++i) {
@@ -169,16 +158,14 @@ void parseHT(std::ifstream& inFile, Header* const header) {
 		length -= 17 + allSymbols;
 	}
 	if (length != 0) {
-		std::cout << "Error: Invalid DHT";
-		header->isValid = false;
+		ErrorHandler::logJPEGError("Error: Invalid DHT", header->isValid);
 	}
 }
 
 void parseSOS(std::ifstream& inFile, Header* const header) {
 	std::cout << "Parsing SOS Marker\n";
 	if (header->numComponents == 0) {
-		std::cout << "Error: SOS Marker can't appear before SOF Marker\n";
-		header->isValid = false;
+		ErrorHandler::logJPEGError("Error: SOS Marker can't appear before SOF Marker\n", header->isValid);
 		return;
 	}
 	uint length = (inFile.get() << 8) | inFile.get();
@@ -192,14 +179,12 @@ void parseSOS(std::ifstream& inFile, Header* const header) {
 			componentID += 1;
 		}
 		if (componentID > header->numComponents) {
-			std::cout << "Error: Invalid color component ID " << (uint) componentID << "\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Invalid color component ID " + std::to_string((uint)componentID) + "\n", header->isValid);
 			return;
 		}
 		ColorComponent* colorComponent = &header->colorComponents[componentID - 1];
 		if (colorComponent->used) {
-			std::cout << "Error: Dupelicate color component ID " << (uint) componentID << " not allowed\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Dupelicate color component ID " + std::to_string((uint)componentID) + " not allowed\n", header->isValid);
 			return;
 		}
 		colorComponent->used = true;
@@ -207,8 +192,7 @@ void parseSOS(std::ifstream& inFile, Header* const header) {
 		colorComponent->huffmanDCTableID = huffmanTableIDs >> 4;
 		colorComponent->huffmanACTableID = huffmanTableIDs & 0x0F;
 		if (colorComponent->huffmanACTableID > 3 || colorComponent->huffmanDCTableID > 3) {
-			std::cout << "Error: Component cannot refer to a huffman table of ID greater then 3\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Component cannot refer to a huffman table of ID greater then 3\n", header->isValid);
 			return;
 		}
 	}
@@ -229,15 +213,16 @@ void parseSOS(std::ifstream& inFile, Header* const header) {
 	}
 
 	if (header->startOfSelection != 0 || header->endOfSelection != 63 || successiveApprox != 0) {
-		std::cout << "Error: Spectral selection, start: " << (uint)header->startOfSelection << ", end: " << (uint)header->endOfSelection <<
-			", or successive approximation: " << (uint)successiveApprox << " are of illegal values\n";
-		header->isValid = false;
+		ErrorHandler::logJPEGError("Error: Spectral selection, start: " +
+			std::to_string((uint)header->startOfSelection) + ", end: " +
+			std::to_string((uint)header->endOfSelection) + ", or successive approximation: " +
+			std::to_string((uint)successiveApprox) + " are of illegal values\n",
+			header->isValid);
 		return;
 	}
 
 	if (length - 6 - (numOfComponents * 2) != 0) {
-		std::cout << "Error: Invalid Length of SOS non-stream segment\n";
-		header->isValid = false;
+		ErrorHandler::logJPEGError("Error: Invalid Length of SOS non-stream segment\n", header->isValid);
 		return;
 	}
 }
@@ -257,23 +242,18 @@ Header* parseJPEG(const std::string& filename) {
 	byte last = inFile.get();
 	byte current = inFile.get();
 	if (last != 0xFF || current != SOI) {
-		header->isValid = false;
-		inFile.close();
+		ErrorHandler::logJPEGError("Invalid Beginning of JPEG\n", header->isValid, inFile);
 		return header;
 	}
 	last = inFile.get();
 	current = inFile.get();
 	while (header->isValid) {
 		if (!inFile) {
-			std::cout << "Error: Invalid end of file\n";
-			header->isValid = false;
-			inFile.close();
+			ErrorHandler::logJPEGError("Error: Invalid end of JPEG\n", header->isValid, inFile);
 			return header;
 		}
 		if (last != 0xFF) {
-			std::cout << "Error: Expected a marker\n";
-			header->isValid = false;
-			inFile.close();
+			ErrorHandler::logJPEGError("Error: Expected a marker\n", header->isValid, inFile);
 			return header;
 		}
 		if (current >= APP0 && current <= APP15) { // APPN Discarding
@@ -308,33 +288,29 @@ Header* parseJPEG(const std::string& filename) {
 			continue;
 		}
 		else if (current == EOI) {
-			std::cout << "Error: EOI Marker before SOS is not allowed\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: EOI Marker before SOS is not allowed\n", header->isValid, inFile);
 			return header;
 		}
 		else if (current == SOI) {
-			std::cout << "Error: Embedded JPEGs unsupported\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Embedded JPEGs unsupported\n", header->isValid, inFile);
 			return header;
 		}
 		else if (current == DAC) {
-			std::cout << "Error: Arithmetic Coding mode unsupported\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: Arithmetic mode unsupported\n", header->isValid, inFile);
 			return header;
 		}
 		else if (current > SOF0 && current <= SOF15) {
-			std::cout << "Error: SOF1-15 unsupported, received: " << std::hex << (uint)current << std::dec << "\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError((std::ostringstream() << "Error: SOF1-15 unsupported, received: " << std::hex << (uint)current << std::dec << "\n").str(),
+				header->isValid, inFile);
 			return header;
 		}
 		else if (current >= RST0 && current <= RST7) {
-			std::cout << "Error: RST Marker before SOS is not allowed\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError("Error: RST Marker before SOS is not allowed\n", header->isValid, inFile);
 			return header;
 		}
 		else{
-			std::cout << "Error: unknown marker: " << std::hex << (uint)current << std::dec << "\n";
-			header->isValid = false;
+			ErrorHandler::logJPEGError((std::ostringstream() << "Error: unknown marker: " << std::hex << (uint)current << std::dec << "\n").str(),
+				header->isValid, inFile);
 			return header;
 		}
 		last = inFile.get();
@@ -344,8 +320,7 @@ Header* parseJPEG(const std::string& filename) {
 		current = inFile.get();
 		while (true) {
 			if (!inFile) {
-				std::cout << "Error: Bit-Stream prematurely ended\n";
-				header->isValid = false;
+				ErrorHandler::logJPEGError("Error: Bit-Stream prematurely ended\n", header->isValid, inFile);
 				return header;
 			}
 
