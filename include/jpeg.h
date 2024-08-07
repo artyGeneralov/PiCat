@@ -2,9 +2,7 @@
 #define JPEG_H
 
 #include <vector>
-
-typedef unsigned char byte;
-typedef unsigned int uint;
+#include "utils.h"
 
 // Start of Frame Markers:
 const byte SOF0 = 0xC0; // Baseline DCT
@@ -111,7 +109,7 @@ struct QuantizationTable {
     uint table[64] = { 0 };
 };
 
-struct Header {
+struct JPEGImage {
     QuantizationTable quantizationTables[4];
     HuffmanTable huffmanDCTables[4];
     HuffmanTable huffmanACTables[4];
