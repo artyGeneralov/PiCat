@@ -1,4 +1,4 @@
-#include "../include/errorHandler.h"
+#include "../include/error_handler.h"
 
 void ErrorHandler::logJPEGError(const std::string& message, bool& isValid) {
 	std::cout << message;

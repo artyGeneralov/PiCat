@@ -1,7 +1,7 @@
 #include "../include/jpeg.h"
 #include <iostream>
 #include <fstream>
-#include "../include/errorHandler.h"
+#include "../include/error_handler.h"
 
 
 void parseQT(std::ifstream& inFile, Header* const header) {

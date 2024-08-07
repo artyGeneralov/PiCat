@@ -67,7 +67,7 @@ const byte APP13 = 0xED;
 const byte APP14 = 0xEE;
 const byte APP15 = 0xEF;
 
-// Miscalenous Markers:
+// Other Markers:
 const byte JPG0 = 0xF0;
 const byte JPG1 = 0xF1;
 const byte JPG2 = 0xF2;
@@ -85,7 +85,7 @@ const byte JPG13 = 0xFD;
 
 const byte COM = 0xFE;
 
-
+// Important bytes
 const byte baseline = 0xC0;
 
 struct HuffmanTable {
@@ -144,6 +144,21 @@ const byte zigZagMap[] = {
     29, 22, 15, 23, 30, 37, 44, 51,
     58, 59, 52, 45, 38, 31, 39, 46,
     53, 60, 61, 54, 47, 55, 62, 63
+};
+
+struct MCU {
+    union {
+        int y[64] = { 0 };
+        int r[64];
+    };
+    union {
+        int cb[64] = { 0 };
+        int g[64];
+    };
+    union {
+        int cr[64] = { 0 };
+        int b[64];
+    };
 };
 
 

@@ -1,9 +1,9 @@
 #include "include/jpeg.h"
 #include <iostream>
 
-struct Header;
-Header* parseJPEG(const std::string&);
-void printHeader(const Header* const);
+struct JPEGImage;
+JPEGImage* parseJPEG(const std::string&);
+void printjpeg(const JPEGImage* const);
 
 int main(int argc, char** argv) {
 	if (argc < 2) {
@@ -14,25 +14,25 @@ int main(int argc, char** argv) {
 	for (int i = 1; i < argc; ++i) {
 		const std::string filename(argv[i]);
 
-		// read header
-		Header* header = parseJPEG(filename);
+		// read jpeg
+		JPEGImage* jpeg = parseJPEG(filename);
 
-		// validate header
-		if (header == nullptr) {
+		// validate jpeg
+		if (jpeg == nullptr) {
 			continue;
 		}
-		else if (header->isValid == false)
+		else if (jpeg->isValid == false)
 		{
 			std::cout << "Error: Provided file " + filename + " is an invalid JPEG\n";
-			delete header;
+			delete jpeg;
 			continue;
 		}
 
-		printHeader(header);
+		printjpeg(jpeg);
 
 		// decode Huffman data
 
 
-		delete header;
+		delete jpeg;
 	}
 }
