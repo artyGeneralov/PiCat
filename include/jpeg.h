@@ -1,6 +1,7 @@
 #ifndef JPEG_H
 #define JPEG_H
 
+#include <vector>
 
 typedef unsigned char byte;
 typedef unsigned int uint;
@@ -66,7 +67,7 @@ const byte APP13 = 0xED;
 const byte APP14 = 0xEE;
 const byte APP15 = 0xEF;
 
-// Miscalenous Markers:
+// Other Markers:
 const byte JPG0 = 0xF0;
 const byte JPG1 = 0xF1;
 const byte JPG2 = 0xF2;
@@ -84,6 +85,9 @@ const byte JPG13 = 0xFD;
 
 const byte COM = 0xFE;
 
+// Important bytes
+const byte baseline = 0xC0;
+
 struct HuffmanTable {
     byte offsets[17] = { 0 };
     byte symbols[162] = { 0 };
@@ -96,6 +100,9 @@ struct ColorComponent {
     byte horizontalSamplingFactor = 1;
     byte verticalSamplingFactor = 1;
     byte quantizationTableID = 0;
+    byte huffmanDCTableID = 0;
+    byte huffmanACTableID = 0;
+
     bool used = false;
 };
 
@@ -113,9 +120,16 @@ struct Header {
     uint width = 0;
     byte numComponents = 0;
 
+    byte startOfSelection = 0;
+    byte endOfSelection = 63;
+    byte successiveApproximationHigh = 0;
+    byte successiveApproximationLow = 0;
+
     ColorComponent colorComponents[3];
 
     uint restartInterval = 0;
+
+    std::vector<byte> huffmanData;
 
     bool zeroBased = false;
 	bool isValid = true;
@@ -130,6 +144,21 @@ const byte zigZagMap[] = {
     29, 22, 15, 23, 30, 37, 44, 51,
     58, 59, 52, 45, 38, 31, 39, 46,
     53, 60, 61, 54, 47, 55, 62, 63
+};
+
+struct MCU {
+    union {
+        int y[64] = { 0 };
+        int r[64];
+    };
+    union {
+        int cb[64] = { 0 };
+        int g[64];
+    };
+    union {
+        int cr[64] = { 0 };
+        int b[64];
+    };
 };
 
 
