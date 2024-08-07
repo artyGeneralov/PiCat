@@ -8,8 +8,8 @@
 
 class ErrorHandler {
 public:
-	static void logJPEGError(const std::string& msg, bool& isValid);
-	static void logJPEGError(const std::string& msg, bool& isValid, std::ifstream& inFile);
+	static void logJPEGError(const std::string&, bool&);
+	static void logJPEGError(const std::string&, bool&, std::ifstream&);
 };
 
 
