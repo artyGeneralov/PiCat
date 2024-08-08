@@ -13,7 +13,7 @@ MCU* decodeJPEG_stub() {
 		}
 	}
 	//Set middle 3 MCUs to green:
-	for (uint i = 0; i < 3; ++i) {
+	for (uint i = 3; i < 6; ++i) {
 		for (uint j = 0; j < 64; ++j) {
 			decoded_mcus[i].r[j] = 0;
 			decoded_mcus[i].g[j] = 255;
@@ -22,7 +22,7 @@ MCU* decodeJPEG_stub() {
 	}
 
 	//Set bottom 3 MCUs to blue:
-	for (uint i = 0; i < 3; ++i) {
+	for (uint i = 6; i < 9; ++i) {
 		for (uint j = 0; j < 64; ++j) {
 			decoded_mcus[i].r[j] = 0;
 			decoded_mcus[i].g[j] = 0;
