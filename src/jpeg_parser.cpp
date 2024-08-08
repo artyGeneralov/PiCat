@@ -388,7 +388,7 @@ void printjpeg(const JPEGImage* const jpeg) {
 			std::cout << "\tTable ID: " << i << "\n";
 			std::cout << "\t\tSymbols:\n";
 			for (uint j = 0; j < 16; ++j) {
-				std::cout <<"\t\t" << (j + 1) << ": ";
+				std::cout << "\t\t" << (j + 1) << "(" << jpeg->huffmanDCTables[i].offsets[j + 1] - jpeg->huffmanDCTables[i].offsets[j] << "): ";
 				for (uint k = jpeg->huffmanDCTables[i].offsets[j]; k < jpeg->huffmanDCTables[i].offsets[j + 1]; ++k) {
 					std::cout << std::hex << (uint)jpeg->huffmanDCTables[i].symbols[k] << std::dec << " ";
 				}
@@ -403,7 +403,7 @@ void printjpeg(const JPEGImage* const jpeg) {
 			std::cout << "\tTable ID: " << i << "\n";
 			std::cout << "\t\tSymbols:\n";
 			for (uint j = 0; j < 16; ++j) {
-				std::cout <<"\t\t" << (j + 1) << ": ";
+				std::cout <<"\t\t" << (j + 1) << "("<< jpeg->huffmanACTables[i].offsets[j + 1] - jpeg->huffmanACTables[i].offsets[j] <<"): ";
 				for (uint k = jpeg->huffmanACTables[i].offsets[j]; k < jpeg->huffmanACTables[i].offsets[j + 1]; ++k) {
 					std::cout << std::hex << (uint)jpeg->huffmanACTables[i].symbols[k] << std::dec << " ";
 				}
