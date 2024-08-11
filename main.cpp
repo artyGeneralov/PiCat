@@ -4,9 +4,11 @@
 struct JPEGImage;
 JPEGImage* parseJPEG(const std::string&);
 void printjpeg(const JPEGImage* const);
-MCU* decodeJPEG_stub();
 MCU* decodeHuffmanData(JPEGImage* const);
 void writeBMP(const std::string&, const MCU* const, const JPEGImage*);
+void dequantize(const JPEGImage* const, MCU* const);
+void inverseDCT(const JPEGImage* const, MCU* const);
+void convertToRGB(const JPEGImage*, MCU* const);
 
 int main(int argc, char** argv) {
 	if (argc < 2) {
@@ -21,7 +23,7 @@ int main(int argc, char** argv) {
 		JPEGImage* jpeg = parseJPEG(filename);
 
 		// validate jpeg
-		if (jpeg == nullptr) {
+		if (jpeg == nullptr) { 
 			continue;
 		}
 		else if (jpeg->isValid == false)
@@ -39,11 +41,15 @@ int main(int argc, char** argv) {
 			delete jpeg;
 			continue;
 		}
+
+		dequantize(jpeg, mcus);
+
+		inverseDCT(jpeg, mcus);
+
+		convertToRGB(jpeg, mcus);
+
 		const std::size_t pos = filename.find_last_of(".");
 		const std::string outName = (pos == std::string::npos) ? (filename + ".bmp") : (filename.substr(0, pos) + ".bmp");
-		//JPEGImage* jpeg_stub = new JPEGImage();
-		//jpeg_stub->height = 528;
-		//jpeg_stub->width = 528;
 		writeBMP(outName, mcus, jpeg);
 
 
