@@ -5,6 +5,7 @@ struct JPEGImage;
 JPEGImage* parseJPEG(const std::string&);
 void printjpeg(const JPEGImage* const);
 MCU* decodeJPEG_stub();
+MCU* decodeHuffmanData(JPEGImage* const);
 void writeBMP(const std::string&, const MCU* const, const JPEGImage*);
 
 int main(int argc, char** argv) {
@@ -31,19 +32,19 @@ int main(int argc, char** argv) {
 		}
 
 		printjpeg(jpeg);
-
 		// decode Huffman data
-		MCU* mcus = decodeJPEG_stub();
+		MCU* mcus = decodeHuffmanData(jpeg);
 		if (mcus == nullptr) {
+			std::cout << "MCU Array Deleted\n";
 			delete jpeg;
 			continue;
 		}
 		const std::size_t pos = filename.find_last_of(".");
 		const std::string outName = (pos == std::string::npos) ? (filename + ".bmp") : (filename.substr(0, pos) + ".bmp");
-		JPEGImage* jpeg_stub = new JPEGImage();
-		jpeg_stub->height = 24;
-		jpeg_stub->width = 24;
-		writeBMP(outName, mcus, jpeg_stub);
+		//JPEGImage* jpeg_stub = new JPEGImage();
+		//jpeg_stub->height = 528;
+		//jpeg_stub->width = 528;
+		writeBMP(outName, mcus, jpeg);
 
 
 		delete[] mcus;

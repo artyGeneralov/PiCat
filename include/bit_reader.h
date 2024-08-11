@@ -8,6 +8,7 @@ public:
 	BitReader(const std::vector<byte>& data);
 	int readNextBit();
 	int readBits(const uint length);
+	void align();
 private:
 	const std::vector<byte>& data;
 	size_t byteIndex;

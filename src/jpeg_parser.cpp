@@ -140,7 +140,7 @@ void parseHT(std::ifstream& inFile, JPEGImage* const jpeg) {
 			ErrorHandler::logJPEGError("Error: Invalid Huffman Table ID\n", jpeg->isValid);
 			return;
 		}
-		HuffmanTable* hTable = ACTable ? &jpeg->huffmanACTables[tableID] : &jpeg->huffmanDCTables[tableID];
+		HuffmanTable* hTable = (ACTable) ? (&jpeg->huffmanACTables[tableID]) : (&jpeg->huffmanDCTables[tableID]);
 		hTable->set = true;
 		hTable->offsets[0] = 0;
 		uint allSymbols = 0;
@@ -148,7 +148,7 @@ void parseHT(std::ifstream& inFile, JPEGImage* const jpeg) {
 			allSymbols += inFile.get();
 			hTable->offsets[i] = allSymbols;
 		}
-		if (allSymbols > 162) {
+		if (allSymbols > 176) {
 			ErrorHandler::logJPEGError("Error: Too many symbols in Huffman Table\n", jpeg->isValid);
 			return;
 		}
@@ -428,4 +428,5 @@ void printjpeg(const JPEGImage* const jpeg) {
 	std::cout << "\tHigh: " << (uint)jpeg->successiveApproximationHigh << "\n";
 	std::cout << "\tLow: " << (uint)jpeg->successiveApproximationLow << "\n";
 	std::cout << "\tLength of Huffman Data: " << (uint)jpeg->huffmanData.size() << "\n";
+
 }
