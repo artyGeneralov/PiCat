@@ -1,6 +1,6 @@
 # Define the compiler and flags
 CC = cl
-CFLAGS = /EHsc /Iinclude
+CFLAGS = /EHsc /Iinclude /Ox
 
 # Define the target executable
 TARGET = jpeg_decoder.exe
