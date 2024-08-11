@@ -33,7 +33,7 @@ void writeBMP(const std::string& savefile_name, const MCU* const mcus, const JPE
 	for (uint i = jpeg_data->height - 1; i < jpeg_data->height; --i) {
 		const uint mcuRow = i / 8;
 		const uint pixelRow = i % 8;
-		for (uint k = jpeg_data->width - 1; k < jpeg_data->width; --k) {
+		for (uint k = 0; k < jpeg_data->width; ++k) {
 			const uint mcuCol = k / 8;
 			const uint pixelCol = k % 8;
 			const uint mcuID = mcuCol + mcuRow * mcuCols;
