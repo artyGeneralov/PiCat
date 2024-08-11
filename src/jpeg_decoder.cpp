@@ -39,7 +39,7 @@ MCU* decodeHuffmanData(JPEGImage* const jpeg) {
 		for (uint j = 0; j < jpeg->numComponents; ++j) {
 			 
 			if (!decodeMCUComponent(bitReader,
-				mcus[i][j],
+				(mcus[i])[j],
 				prevDCCoefficients[j],
 				jpeg->huffmanDCTables[jpeg->colorComponents[j].huffmanDCTableID],
 				jpeg->huffmanACTables[jpeg->colorComponents[j].huffmanACTableID])) { // decodeMCUComponent processes a single channel of a single MCU
@@ -51,7 +51,7 @@ MCU* decodeHuffmanData(JPEGImage* const jpeg) {
 	return mcus;
 }
 
-bool decodeMCUComponent(BitReader& br, int* const component,int& prevDC, const HuffmanTable& dcTable, const HuffmanTable& acTable) {
+bool decodeMCUComponent(BitReader& br, int* const component, int& prevDC, const HuffmanTable& dcTable, const HuffmanTable& acTable) {
 	// Get DC Value for this mcu component
 	byte length = getNextSymbol(br, dcTable);
 	if (length == (byte)-1) {
@@ -69,11 +69,12 @@ bool decodeMCUComponent(BitReader& br, int* const component,int& prevDC, const H
 	if (length != 0 && coefficient < (1 << (length - 1))) {
 		coefficient -= (1 << length) - 1;
 	}
-	component[0] = coefficient+prevDC;
+	component[0] = coefficient + prevDC;
 	prevDC = component[0];
 
+	//// Get AC Values:
 	uint i = 1;
-	while(i < 64){
+	while (i < 64) {
 		byte symbol = getNextSymbol(br, acTable);
 		if (symbol == (byte)-1) {
 			std::cout << "Error: Invalid AC value\n";
@@ -110,7 +111,7 @@ bool decodeMCUComponent(BitReader& br, int* const component,int& prevDC, const H
 				return false;
 			}
 			if (coefficient < (1 << (coefficientLength - 1))) {
-				coefficient = (1 << coefficientLength) - 1;
+				coefficient -= (1 << coefficientLength) - 1;
 			}
 			component[zigZagMap[i]] = coefficient;
 			i += 1;
@@ -118,6 +119,7 @@ bool decodeMCUComponent(BitReader& br, int* const component,int& prevDC, const H
 	}
 	return true;
 }
+
 
 byte getNextSymbol(BitReader& br, const HuffmanTable& table) {
 	uint currentCode = 0;
